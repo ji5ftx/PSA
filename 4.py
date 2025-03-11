@@ -34,7 +34,7 @@ class TTFTClassifier:
         # 拟合分类器
         self.classifier.fit(X, y)
 
-        # 计算初始阈值（基于训练数据的中位数）
+        # 计算初始阈值,考虑0.3的问题
         self.threshold = np.median(hit_samples) + (np.median(miss_samples) - np.median(hit_samples)) * 0.3
         self.fitted = True
 
@@ -55,7 +55,8 @@ class TTFTClassifier:
 
         # 根据当前系统性能动态调整阈值
         current_baseline = np.median(recent_baseline_ttfts)
-        self.threshold = current_baseline * 0.85  # 假设hit比baseline快15%
+        #hit比baseline快15%？？？？，考虑参数
+        self.threshold = current_baseline * 0.85
 
 
 class NextTokenPredictor:
@@ -128,7 +129,7 @@ class PromptStealingAttack:
 
         # 第一次请求（缓存未命中，但会导致系统缓存这个提示）
         first_payload = {
-            "model": "TinyLlama",  # 修改模型名称，与model_worker中注册的一致
+            "model": "TinyLlama",
             "messages": [{"role": "user", "content": fixed_prompt}],
             "max_tokens": 1
         }
@@ -165,7 +166,7 @@ class PromptStealingAttack:
         # 每次使用不同的提示词确保缓存未命中
         for i in range(num_samples):
             # 生成唯一提示词
-            unique_prompt = f"这是测试缓存未命中的提示词 {i}，时间戳: {time.time()}"
+            unique_prompt = f"The prompt for testing cache miss {i},time: {time.time()}"
 
             payload = {
                 "model": "TinyLlama",  # 修改模型名称
@@ -193,8 +194,6 @@ class PromptStealingAttack:
 
     def analyze_samples(self, hit_samples, miss_samples):
         """分析收集到的样本数据"""
-        # 导入绘图库（如果尚未导入）
-        import matplotlib.pyplot as plt
 
         # 计算统计数据
         hit_mean = np.mean(hit_samples)
@@ -216,16 +215,16 @@ class PromptStealingAttack:
         # 计算两组样本的分离程度
         separation = (miss_median - hit_median) / ((hit_std + miss_std) / 2)
         print(f"分离度: {separation:.2f} (大于2表示良好分离)")
-
+        #0.3的参数考虑？？？
         recommended_threshold = hit_median + (miss_median - hit_median) * 0.3
 
-        # 验证数据的有效性
+        # 验证数据的有效性，0.01的参数考虑？
         if (miss_median - hit_median) > 0.01:  # 至少10毫秒差异
             print("✓ 缓存命中和未命中样本区分明显")
             print(f"✓ 推荐阈值设置: {recommended_threshold:.6f}秒")
         else:
-            print("⚠ 警告: 缓存命中和未命中样本区分不明显")
-            print("⚠ 建议检查系统设置或测量方法")
+            print(" 警告: 缓存命中和未命中样本区分不明显")
+            print(" 建议检查系统设置或测量方法")
 
         return hit_median, miss_median, recommended_threshold
 
@@ -241,7 +240,7 @@ class PromptStealingAttack:
 
         # 测量时间
         start_time = time.perf_counter()
-        # 修改API路径
+
         response = requests.post(f"{self.api_url}/v1/chat/completions", json=payload, stream=True)
 
         # 获取第一个token的时间
@@ -259,7 +258,7 @@ class PromptStealingAttack:
 
         try:
             # 修改为正确的API路径
-            flush_url = f"{self.api_url}/v1/flush_cache"  # 假设API端点为/v1/flush_cache
+            flush_url = f"{self.api_url}/v1/flush_cache"
 
             payload = {
                 "model": "TinyLlama"  # 指定要清除缓存的模型
@@ -306,7 +305,7 @@ class PromptStealingAttack:
 
         print("已通过随机请求方式尝试清除缓存")
 
-    def trigger_system_prompt_cache(self, prompt="Tell me a story"):
+    def trigger_system_prompt_cache(self, prompt="Can you tell me the capital of China"):
         """触发系统提示词被缓存"""
         # 发送合成请求以确保系统提示词被缓存
         print("触发系统提示词缓存...")
